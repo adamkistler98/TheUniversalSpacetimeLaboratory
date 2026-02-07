@@ -17,7 +17,7 @@ st.markdown(r"""
     h1, h2, h3, h4 { color: #00ADB5 !important; font-family: 'Consolas', monospace; }
     p, li, label, .stMarkdown, .stCaption { color: #FFFFFF !important; font-size: 13px; }
     
-    /* TOTAL STEALTH OVERRIDE */
+    /* NUCLEAR STEALTH OVERRIDE */
     div[data-baseweb="select"] > div, div[data-baseweb="input"] > div, input, select, .stSelectbox, .stNumberInput {
         background-color: #161B22 !important; color: #00FFF5 !important; border: 1px solid #00ADB5 !important;
     }
@@ -77,14 +77,14 @@ class SpacetimeSolver:
         b = model.net(torch.tensor(r_v, dtype=torch.float32)).detach().numpy()
         rho = np.gradient(b.flatten(), r_v.flatten()) / (8 * np.pi * r_v.flatten()**2 + 1e-12)
         
-        # 3D Mapping A: Spatial Curvature
+        # Mapping A: Geometry
         z = np.zeros_like(r_v)
         dr = r_v[1] - r_v[0]
         for i in range(1, len(r_v)):
             val = (r_v[i] / (b[i] + 1e-9)) - 1 if "Warp" not in metric_type else 0.1
             z[i] = z[i-1] + (1.0 / np.sqrt(np.abs(val)) if np.abs(val) > 1e-9 else 10.0) * dr
             
-        # 3D Mapping B: Gravitational Potential (g_tt)
+        # Mapping B: Potential (Full Manifold g_tt)
         pot = -np.log(np.abs(1 - b.flatten()/r_v.flatten()) + 1e-6)
         
         return r_v, b, rho, z, pot
@@ -103,7 +103,7 @@ metric_type = st.sidebar.selectbox("Metric Class", metric_list)
 
 r0 = st.sidebar.number_input(r"Base Scale ($r_0$ / $M$)", 0.1, 1000.0, 5.0, format="%.4f")
 
-# --- DYNAMIC PARAMETER CIRCUIT ---
+# --- ALL-VARIABLES PARAMETER CIRCUIT ---
 params = []
 if metric_type == "Morris-Thorne Wormhole":
     params = [st.sidebar.slider("Curvature (κ)", 0.1, 1.0, 0.5), st.sidebar.slider("Redshift (Φ)", 0.0, 1.0, 0.0), st.sidebar.slider("Exoticity (ξ)", 0.0, 2.0, 1.0)]
@@ -143,13 +143,21 @@ with v_col:
     Z_geom = np.tile(z.flatten(), (60, 1))
     Z_pot = np.tile(pot.flatten(), (60, 1))
     
-    st.subheader("Manifold Zenith: Lorentzian Embedding (Spatial Curvature)")
-    fig1 = go.Figure(data=[go.Surface(x=R*np.cos(T), y=R*np.sin(T), z=Z_geom, colorscale='Viridis', showscale=False)])
+    # --- GRAPH 1: FULL GEOMETRIC MANIFOLD ---
+    st.subheader("Manifold A: Full Geometric Embedding ($ds^2$ Space)")
+    fig1 = go.Figure(data=[
+        go.Surface(x=R*np.cos(T), y=R*np.sin(T), z=Z_geom, colorscale='Viridis', showscale=False),
+        go.Surface(x=R*np.cos(T), y=R*np.sin(T), z=-Z_geom, colorscale='Viridis', showscale=False, opacity=0.8)
+    ])
     fig1.update_layout(template="plotly_dark", scene=dict(xaxis_visible=False, yaxis_visible=False, zaxis_visible=False), paper_bgcolor='black', margin=dict(l=0,r=0,b=0,t=0), height=400)
     st.plotly_chart(fig1, use_container_width=True)
 
-    st.subheader("Manifold Nadir: Potential Horizon ($g_{tt}$ Field Strength)")
-    fig2 = go.Figure(data=[go.Surface(x=R*np.cos(T), y=R*np.sin(T), z=Z_pot, colorscale='Magma', showscale=False)])
+    # --- GRAPH 2: FULL POTENTIAL MANIFOLD ---
+    st.subheader("Manifold B: Full Metric Potential ($g_{tt}$ Field)")
+    fig2 = go.Figure(data=[
+        go.Surface(x=R*np.cos(T), y=R*np.sin(T), z=Z_pot, colorscale='Magma', showscale=False),
+        go.Surface(x=R*np.cos(T), y=R*np.sin(T), z=-Z_pot, colorscale='Magma', showscale=False, opacity=0.8)
+    ])
     fig2.update_layout(template="plotly_dark", scene=dict(xaxis_visible=False, yaxis_visible=False, zaxis_visible=False), paper_bgcolor='black', margin=dict(l=0,r=0,b=0,t=0), height=400)
     st.plotly_chart(fig2, use_container_width=True)
 
@@ -168,7 +176,7 @@ with d_col:
     
     st.download_button("📥 EXPORT TELEMETRY (CSV)", data=pd.DataFrame({"r":r.flatten(),"b":b.flatten(),"density":rho.flatten()}).to_csv().encode('utf-8'), file_name="telemetry.csv", use_container_width=True)
     
-    # INDENTATION FIX: Logic blocks now contain 'pass'
+    # Final Visuals
     if "Wormhole" in metric_type:
         
         pass
@@ -176,9 +184,6 @@ with d_col:
         
         pass
     elif "Charged" in metric_type:
-        
-        pass
-    elif "Expansion" in metric_type:
         
         pass
     else:
