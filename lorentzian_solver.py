@@ -18,47 +18,29 @@ st.set_page_config(
 
 st.markdown(r"""
 <style>
-    /* Global Background */
     .stApp { background-color: #000000 !important; }
-    
-    /* Headers & Text - Research Cyan */
     h1, h2, h3, h4 { color: #00ADB5 !important; font-family: 'Consolas', monospace; }
     p, li, label, .stMarkdown, .stCaption { color: #FFFFFF !important; font-size: 14px; }
     
     /* TOTAL STEALTH DROPDOWNS & INPUTS */
-    div[data-baseweb="select"] > div, div[data-baseweb="input"] > div, input, select, .stSelectbox, .stNumberInput {
-        background-color: #161B22 !important; 
-        color: #00FFF5 !important; 
-        border: 1px solid #00ADB5 !important;
+    div[data-baseweb="select"] > div, div[data-baseweb="input"] > div, input, select {
+        background-color: #161B22 !important; color: #00FFF5 !important; border: 1px solid #00ADB5 !important;
     }
     div[data-baseweb="popover"], ul[role="listbox"], li[role="option"] {
-        background-color: #161B22 !important;
-        color: #00FFF5 !important;
-        border: 1px solid #00ADB5 !important;
+        background-color: #161B22 !important; color: #00FFF5 !important;
     }
-    li[role="option"]:hover, li[aria-selected="true"] {
-        background-color: #1f242d !important;
-        color: #00FFF5 !important;
-    }
-
+    
     /* METRICS & SIDEBAR */
-    div[data-testid="stMetricValue"] { color: #00FF41 !important; font-family: 'Consolas', monospace; text-shadow: 0 0 10px rgba(0,255,65,0.4); }
-    div[data-testid="stMetricLabel"] { color: #AAAAAA !important; text-transform: uppercase; letter-spacing: 1px; }
+    div[data-testid="stMetricValue"] { color: #00FF41 !important; font-family: 'Consolas', monospace; }
     section[data-testid="stSidebar"] { background-color: #050505 !important; border-right: 1px solid #222; }
     
-    /* STEALTH EXPORT BUTTON (RIGHT SIDE) */
+    /* STEALTH EXPORT BUTTON */
     div.stDownloadButton > button { 
-        border: 1px solid #00ADB5 !important; 
-        color: #00ADB5 !important; 
-        background-color: #161B22 !important; 
+        border: 1px solid #00ADB5 !important; color: #00ADB5 !important; background-color: #161B22 !important; 
         width: 100%; border-radius: 2px; font-weight: bold; font-size: 12px !important;
-        text-transform: uppercase; padding: 6px 12px !important;
+        text-transform: uppercase; padding: 10px !important;
     }
-    div.stDownloadButton > button:hover { 
-        background-color: #1f242d !important; 
-        color: #00FFF5 !important; 
-        box-shadow: 0 0 15px rgba(0, 173, 181, 0.4); 
-    }
+    div.stDownloadButton > button:hover { background-color: #1f242d !important; box-shadow: 0 0 15px rgba(0, 173, 181, 0.4); }
 </style>
 """, unsafe_allow_html=True)
 
@@ -104,9 +86,7 @@ class SpacetimeSolver:
             z[i] = z[i-1] + (1.0 / np.sqrt(np.abs(val)) if np.abs(val) > 1e-9 else 10.0) * dr
         return r_v, b, rho, z
 
-# --- 3. DASHBOARD HUD ---
-st.title("LORENTZIAN METRIC SOLVER")
-
+# --- 3. DASHBOARD ---
 st.sidebar.markdown(r"### 🛠️ MANIFOLD SELECTOR")
 metric_list = [
     "Morris-Thorne Wormhole", "Kerr Black Hole", "Alcubierre Warp Drive", 
@@ -116,10 +96,9 @@ metric_list = [
     "Einstein-Rosen Bridge", "JNW (Naked Singularity)", "Ellis Drainhole"
 ]
 metric_type = st.sidebar.selectbox("Spacetime Metric", metric_list)
-
 r0 = st.sidebar.number_input(r"Horizon/Throat ($r_0$)", 0.1, 500.0, 5.0, format="%.4f")
 
-# Dynamic Parameter Logic
+# Dynamic Logic
 if "Kerr-Newman" in metric_type:
     param = [st.sidebar.slider("Charge (Q)", 0.0, 5.0, 1.0), st.sidebar.slider("Rotation (a)", 0.0, 5.0, 1.0)]
 elif "Sitter" in metric_type or "AdS" in metric_type:
@@ -127,7 +106,6 @@ elif "Sitter" in metric_type or "AdS" in metric_type:
 elif "Charged" in metric_type: param = st.sidebar.slider("Charge (Q)", 0.0, float(r0), 1.0)
 elif "Kerr" in metric_type: param = st.sidebar.slider("Rotation (a)", 0.0, 5.0, 1.0)
 elif "Warp" in metric_type: param = st.sidebar.slider("Velocity (v/c)", 0.1, 5.0, 1.0)
-elif "Stringy" in metric_type: param = st.sidebar.slider("Coupling (φ)", 0.0, 4.0, 0.5)
 else: param = st.sidebar.slider("Curvature Factor", 0.01, 1.0, 0.5)
 
 lr_val = st.sidebar.number_input("Learning Rate", 0.0001, 0.01, 0.001, format="%.4f")
@@ -138,7 +116,7 @@ pause = st.sidebar.toggle("HALT SIMULATION", value=False)
 model, hist = SpacetimeSolver.solve_manifold(metric_type, r0, r0 * 10, param, epochs, lr_val)
 r, b, rho, z = SpacetimeSolver.extract_telemetry(model, metric_type, r0, r0 * 10)
 
-# Metrics
+# Metrics Strip
 m1, m2, m3 = st.columns(3)
 m1.metric("CONVERGENCE", f"{hist.loss_train[-1][0]:.2e}")
 m2.metric("CLASS", metric_type.split()[0])
@@ -150,47 +128,56 @@ st.markdown("---")
 v_col, d_col = st.columns([2, 1])
 
 with v_col:
-    # 3D DUAL-SURFACE (Mirror Universe Connection)
+    # --- 3D INTERACTIVE GRAPH 1: UPPER MANIFOLD ---
+    st.subheader("Upper Manifold Perspective")
     th = np.linspace(0, 2*np.pi, 60)
     R, T = np.meshgrid(r.flatten(), th)
     Z = np.tile(z.flatten(), (60, 1))
     
-    fig = go.Figure(data=[
-        go.Surface(x=R*np.cos(T), y=R*np.sin(T), z=Z, colorscale='Viridis', showscale=False),
-        go.Surface(x=R*np.cos(T), y=R*np.sin(T), z=-Z, colorscale='Cividis', showscale=False)
-    ])
-    fig.update_layout(template="plotly_dark", scene=dict(xaxis_visible=False, yaxis_visible=False, zaxis_visible=False, aspectmode='cube'), paper_bgcolor='black', margin=dict(l=0,r=0,b=0,t=0))
-    st.plotly_chart(fig, use_container_width=True)
+    fig1 = go.Figure(data=[go.Surface(x=R*np.cos(T), y=R*np.sin(T), z=Z, colorscale='Viridis', showscale=False)])
+    fig1.update_layout(template="plotly_dark", scene=dict(xaxis_visible=False, yaxis_visible=False, zaxis_visible=False), paper_bgcolor='black', margin=dict(l=0,r=0,b=0,t=0), height=350)
+    st.plotly_chart(fig1, use_container_width=True)
+
+    # --- 3D INTERACTIVE GRAPH 2: LOWER MANIFOLD ---
+    st.subheader("Lower Manifold Perspective")
+    fig2 = go.Figure(data=[go.Surface(x=R*np.cos(T), y=R*np.sin(T), z=-Z, colorscale='Cividis', showscale=False)])
+    fig2.update_layout(template="plotly_dark", scene=dict(xaxis_visible=False, yaxis_visible=False, zaxis_visible=False), paper_bgcolor='black', margin=dict(l=0,r=0,b=0,t=0), height=350)
+    st.plotly_chart(fig2, use_container_width=True)
 
 with d_col:
-    # STACKED 2D ANALYTICS
+    # --- STACKED 2D ANALYTICS ---
+    st.subheader("Tensor Analysis")
     fig_stack, (ax1, ax2) = plt.subplots(2, 1, facecolor='black', figsize=(6, 8))
     
-    # 2D Density Chart
+    # Graph 1: Energy Density
     ax1.set_facecolor('black')
     ax1.plot(r, rho, color='#FF2E63', lw=2)
     ax1.set_title("Energy Density Profile", color='white', fontsize=10)
     ax1.tick_params(colors='white', labelsize=8); ax1.grid(alpha=0.1)
     
-    # 2D Shape Chart
+    # Graph 2: Shape Function
     ax2.set_facecolor('black')
     ax2.plot(r, b, color='#00ADB5', lw=2)
-    ax2.set_title("Manifold Shape Function b(r)", color='white', fontsize=10)
+    ax2.set_title("Metric Shape b(r)", color='white', fontsize=10)
     ax2.tick_params(colors='white', labelsize=8); ax2.grid(alpha=0.1)
     
     plt.tight_layout()
     st.pyplot(fig_stack)
     
-    # RELOCATED TELEMETRY BUTTON
-    st.markdown("### 📊 DATA EXPORT")
-    df_out = pd.DataFrame({"radius_r": r.flatten(), "shape_b": b.flatten(), "density_rho": rho.flatten()})
+    # --- DATA EXPORT CIRCUIT ---
+    st.markdown("### 📊 DATA HUB")
+    df_out = pd.DataFrame({"radius": r.flatten(), "shape": b.flatten(), "density": rho.flatten()})
     st.download_button(
-        label="📥 EXPORT MANIFOLD TELEMETRY (CSV)",
+        label="📥 EXPORT TELEMETRY (CSV)",
         data=df_out.to_csv(index=False).encode('utf-8'),
-        file_name=f"{metric_type.replace(' ', '_')}_telemetry.csv",
+        file_name=f"{metric_type.replace(' ', '_')}.csv",
         mime="text/csv",
         use_container_width=True
     )
+
+    if "Wormhole" in metric_type: 
+    elif "Kerr" in metric_type: 
+    
 
 if not pause:
     time.sleep(0.01)
