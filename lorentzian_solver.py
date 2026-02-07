@@ -8,19 +8,24 @@ import plotly.graph_objects as go
 import io
 import time
 
-# --- 1. UI CONFIGURATION & ABSOLUTE STEALTH CSS ---
-st.set_page_config(page_title="Lorentzian Metric Solver", layout="wide", page_icon="🌌", initial_sidebar_state="expanded")
+# --- 1. UI CONFIGURATION & NUCLEAR STEALTH CSS ---
+st.set_page_config(
+    page_title="Lorentzian Metric Solver", 
+    layout="wide", 
+    page_icon="🌌", 
+    initial_sidebar_state="expanded"
+)
 
 st.markdown(r"""
 <style>
-    /* 1. Main Background - Deep Space Void */
+    /* Global Background */
     .stApp { background-color: #000000 !important; }
     
-    /* 2. Text & Headers - Research Cyan */
+    /* Headers & Text - Research Cyan */
     h1, h2, h3, h4 { color: #00ADB5 !important; font-family: 'Consolas', monospace; }
     p, li, label, .stMarkdown, .stCaption { color: #FFFFFF !important; font-size: 14px; }
     
-    /* 3. PERMANENT STEALTH INPUTS & DROPDOWNS */
+    /* TOTAL STEALTH DROPDOWNS & INPUTS */
     div[data-baseweb="select"] > div, div[data-baseweb="input"] > div, input, select, .stSelectbox, .stNumberInput {
         background-color: #161B22 !important; 
         color: #00FFF5 !important; 
@@ -36,32 +41,28 @@ st.markdown(r"""
         color: #00FFF5 !important;
     }
 
-    /* 4. METRICS & SIDEBAR */
+    /* METRICS & SIDEBAR */
     div[data-testid="stMetricValue"] { color: #00FF41 !important; font-family: 'Consolas', monospace; text-shadow: 0 0 10px rgba(0,255,65,0.4); }
     div[data-testid="stMetricLabel"] { color: #AAAAAA !important; text-transform: uppercase; letter-spacing: 1px; }
     section[data-testid="stSidebar"] { background-color: #050505 !important; border-right: 1px solid #222; }
     
-    /* 5. STEALTH BUTTONS */
+    /* BUTTONS */
     div.stButton > button, div.stDownloadButton > button { 
         border: 1px solid #00ADB5 !important; 
         color: #00ADB5 !important; 
         background-color: #161B22 !important; 
-        width: 100%; 
-        border-radius: 2px; 
-        font-weight: bold; 
-        text-transform: uppercase;
-        transition: all 0.4s ease;
+        width: 100%; border-radius: 2px; font-weight: bold; text-transform: uppercase;
     }
     div.stButton > button:hover { background-color: #1f242d !important; color: #00FFF5 !important; box-shadow: 0 0 15px rgba(0, 173, 181, 0.4); }
 
-    /* 6. TAB STYLING */
+    /* TAB STYLING */
     .stTabs [data-baseweb="tab-list"] { background-color: #000000 !important; }
     .stTabs [data-baseweb="tab"] { color: #888888 !important; }
     .stTabs [data-baseweb="tab"][aria-selected="true"] { color: #00ADB5 !important; border-bottom-color: #00ADB5 !important; }
 </style>
 """, unsafe_allow_html=True)
 
-# --- 2. PHYSICS CORE: 11-METRIC KERNEL ---
+# --- 2. THE PHYSICS KERNEL ---
 class SpacetimeSolver:
     @staticmethod
     @st.cache_resource(show_spinner=False)
@@ -79,6 +80,8 @@ class SpacetimeSolver:
                 return db_dr - (b / r) + (param**2 / r**2)
             elif metric_type == "Schwarzschild-de Sitter (Expansion)":
                 return db_dr - (b / r) - (param * r**2)
+            elif metric_type == "Schwarzschild-AdS (Contraction)":
+                return db_dr - (b / r) + (param * r**2)
             elif metric_type == "GHS Stringy Black Hole":
                 return db_dr - (b / (r - param))
             elif metric_type == "Vaidya (Radiating Star)":
@@ -116,54 +119,66 @@ class SpacetimeSolver:
 st.title("LORENTZIAN METRIC SOLVER")
 
 st.sidebar.markdown(r"### 🛠️ MANIFOLD SELECTOR")
-metric_type = st.sidebar.selectbox("Spacetime Metric", 
-    ["Morris-Thorne Wormhole", "Kerr Black Hole", "Alcubierre Warp Drive", 
-     "Reissner-Nordström (Charged)", "Schwarzschild-de Sitter (Expansion)", 
-     "GHS Stringy Black Hole", "Vaidya (Radiating Star)",
-     "Kerr-Newman (Charge + Rotation)", "Einstein-Rosen Bridge", 
-     "JNW (Naked Singularity)", "Ellis Drainhole"])
+metric_list = [
+    "Morris-Thorne Wormhole", "Kerr Black Hole", "Alcubierre Warp Drive", 
+    "Reissner-Nordström (Charged)", "Schwarzschild-de Sitter (Expansion)", 
+    "Schwarzschild-AdS (Contraction)", "GHS Stringy Black Hole", 
+    "Vaidya (Radiating Star)", "Kerr-Newman (Charge + Rotation)", 
+    "Einstein-Rosen Bridge", "JNW (Naked Singularity)", "Ellis Drainhole"
+]
+metric_type = st.sidebar.selectbox("Spacetime Metric", metric_list)
 
 st.sidebar.markdown(r"### 🧬 TOPOLOGY CONFIG")
-r0 = st.sidebar.number_input(r"Horizon/Throat ($r_0$)", 0.1, 100.0, 5.0, format="%.4f")
+r0 = st.sidebar.number_input(r"Horizon/Throat ($r_0$)", 0.0001, 100.0, 5.0, format="%.4f")
 
-# Sidebar Dynamic Parameters
+# AUDITED PARAMETER LOGIC FOR EACH DROP DOWN
 if metric_type == "Kerr-Newman (Charge + Rotation)":
-    q = st.sidebar.slider(r"Charge ($Q$)", 0.0, 5.0, 1.0); a = st.sidebar.slider(r"Rotation ($a$)", 0.0, 5.0, 1.0)
+    q = st.sidebar.slider(r"Charge ($Q$)", 0.0, 5.0, 1.0)
+    a = st.sidebar.slider(r"Rotation ($a$)", 0.0, 5.0, 1.0)
     param = [q, a]
-elif metric_type == "Morris-Thorne Wormhole": param = st.sidebar.slider(r"Curvature ($\kappa$)", 0.1, 0.9, 0.5)
-elif metric_type == "Kerr Black Hole": param = st.sidebar.slider(r"Angular Momentum ($a$)", 0.0, 5.0, 1.0)
-elif metric_type == "Alcubierre Warp Drive": param = st.sidebar.slider(r"Velocity ($v/c$)", 0.1, 5.0, 1.0)
-elif metric_type == "Reissner-Nordström (Charged)": param = st.sidebar.slider(r"Electric Charge ($Q$)", 0.0, float(r0), 1.0)
-elif metric_type == "Schwarzschild-de Sitter (Expansion)": param = st.sidebar.number_input(r"Expansion ($\Lambda$)", 0.0, 0.01, 0.0001, format="%.6f")
-elif metric_type == "GHS Stringy Black Hole": param = st.sidebar.slider(r"Dilaton Coupling ($\phi$)", 0.0, 4.0, 0.5)
-elif metric_type == "JNW (Naked Singularity)": param = st.sidebar.slider(r"Scalar Strength ($s$)", 0.1, 2.0, 1.0)
-elif metric_type == "Ellis Drainhole": param = st.sidebar.slider(r"Flow Intensity ($n$)", 1.0, 10.0, 2.0)
-elif metric_type == "Vaidya (Radiating Star)": param = st.sidebar.slider(r"Mass Loss Rate ($\dot{M}$)", 0.0, 1.0, 0.1)
-else: param = 1.0
+elif metric_type == "Morris-Thorne Wormhole":
+    param = st.sidebar.slider(r"Curvature ($\kappa$)", 0.1, 0.9, 0.5)
+elif metric_type == "Kerr Black Hole":
+    param = st.sidebar.slider(r"Angular Momentum ($a$)", 0.0, 5.0, 1.0)
+elif metric_type == "Alcubierre Warp Drive":
+    param = st.sidebar.slider(r"Velocity ($v/c$)", 0.1, 5.0, 1.0)
+elif metric_type == "Reissner-Nordström (Charged)":
+    param = st.sidebar.slider(r"Electric Charge ($Q$)", 0.0, float(r0), 1.0)
+elif "Sitter" in metric_type or "AdS" in metric_type:
+    param = st.sidebar.number_input(r"Lambda ($\Lambda$)", 0.0, 0.01, 0.0001, format="%.6f")
+elif "Stringy" in metric_type:
+    param = st.sidebar.slider(r"Coupling ($\phi$)", 0.0, 4.0, 0.5)
+elif "Naked" in metric_type:
+    param = st.sidebar.slider(r"Scalar Strength ($s$)", 0.1, 2.0, 1.0)
+elif "Drainhole" in metric_type:
+    param = st.sidebar.slider(r"Flow Rate ($n$)", 1.0, 10.0, 2.0)
+elif "Vaidya" in metric_type:
+    param = st.sidebar.slider(r"Mass Loss ($\dot{M}$)", 0.0, 1.0, 0.1)
+else:
+    param = 1.0
 
 st.sidebar.markdown(r"### ⚙️ NUMERICAL KERNEL")
 lr_val = st.sidebar.number_input(r"Learning Rate ($\eta$)", 0.0001, 0.01, 0.001, format="%.4f")
 epochs = st.sidebar.select_slider("Epochs", options=[1000, 2500, 5000], value=2500)
 pause = st.sidebar.toggle("HALT SIMULATION", value=False)
 
-# Kernel Execution
+# Solver Execution
 model, hist = SpacetimeSolver.solve_manifold(metric_type, r0, r0 * 10, param, epochs, lr_val)
 r, b, rho, z = SpacetimeSolver.extract_telemetry(model, metric_type, r0, r0 * 10)
 
 # Metrics Strip
 m1, m2, m3, m4 = st.columns(4)
 m1.metric("CONVERGENCE", f"{hist.loss_train[-1][0]:.2e}")
-m2.metric("MANIFOLD CLASS", metric_type.split()[0])
+m2.metric("CLASS", metric_type.split()[0])
 m3.metric("PEAK CURVATURE", f"{np.max(np.abs(rho)):.4f}")
 m4.markdown(f"<div style='text-align:center'><span style='color:#888;font-size:11px'>KERNEL STATE</span><br><span style='color:#00FF41;font-size:18px;font-weight:bold'>NOMINAL</span></div>", unsafe_allow_html=True)
 
 st.markdown("---")
 
-# Main Content: Split Screen
 v_col, d_col = st.columns([2, 1])
 
 with v_col:
-    # --- RESTORED: DUAL-SURFACE 3D INTERACTIVE ---
+    # 3D DUAL-SURFACE (Mirror Universe)
     th = np.linspace(0, 2*np.pi, 60)
     R, T = np.meshgrid(r.flatten(), th)
     Z = np.tile(z.flatten(), (60, 1))
@@ -175,30 +190,33 @@ with v_col:
     fig.update_layout(template="plotly_dark", scene=dict(xaxis_visible=False, yaxis_visible=False, zaxis_visible=False, aspectmode='cube'), paper_bgcolor='black', margin=dict(l=0,r=0,b=0,t=0))
     st.plotly_chart(fig, use_container_width=True)
     
-    # Export Circuit
     e1, e2 = st.columns(2)
     e1.download_button("📸 SNAPSHOT TOPOLOGY", data=io.BytesIO().getvalue(), file_name="topology.png", use_container_width=True)
     e2.download_button("📊 EXPORT TELEMETRY", data=pd.DataFrame({"r": r.flatten(), "b": b.flatten()}).to_csv(index=False).encode('utf-8'), file_name="telemetry.csv", use_container_width=True)
 
 with d_col:
-    # --- RESTORED: STACKED ANALYTICS TABS ---
+    # STACKED ANALYTICS TABS (Right Side)
     tabs = st.tabs(["📊 STRESS-ENERGY", "📈 FIELD TENSORS"])
     
     with tabs[0]:
         st.subheader("Matter/Energy Density Profile")
+        
         fig_r, ax_r = plt.subplots(facecolor='black')
         ax_r.set_facecolor('black')
         ax_r.plot(r, rho, color='#FF2E63', lw=2)
         ax_r.tick_params(colors='white'); ax_r.grid(alpha=0.1)
         st.pyplot(fig_r)
         
-        # Educational Visual Anchors (Physics PHDs like these references)
-        if "Wormhole" in metric_type: ; pass
-        elif "Kerr" in metric_type: ; pass
-        elif "Charged" in metric_type: ; pass
-        elif "Vaidya" in metric_type: ; pass
-        elif "Expansion" in metric_type: ; pass
-        elif "Stringy" in metric_type: ; pass
+        # Physics Visual Cues
+        if "Wormhole" in metric_type:
+            
+        elif "Kerr" in metric_type:
+            
+        elif "Charged" in metric_type:
+            
+        elif "Vaidya" in metric_type:
+            
+        pass
 
     with tabs[1]:
         st.subheader("Metric Shape Function b(r)")
@@ -207,9 +225,8 @@ with d_col:
         ax_b.plot(r, b, color='#00ADB5', lw=2)
         ax_b.tick_params(colors='white'); ax_b.grid(alpha=0.1)
         st.pyplot(fig_b)
-        st.caption("Visualizing the spatial deformation required to satisfy the EFE residual.")
 
-# Simulation Loop
+# Lifecycle
 if not pause:
     time.sleep(0.01)
     st.rerun()
