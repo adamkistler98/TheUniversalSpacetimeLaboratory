@@ -17,7 +17,7 @@ st.markdown(r"""
     h1, h2, h3, h4 { color: #00ADB5 !important; font-family: 'Consolas', monospace; }
     p, li, label, .stMarkdown, .stCaption { color: #FFFFFF !important; font-size: 13px; }
     
-    /* NUCLEAR STEALTH OVERRIDE */
+    /* TOTAL STEALTH DROPDOWNS & INPUTS */
     div[data-baseweb="select"] > div, div[data-baseweb="input"] > div, input, select, .stSelectbox, .stNumberInput {
         background-color: #161B22 !important; color: #00FFF5 !important; border: 1px solid #00ADB5 !important;
     }
@@ -33,6 +33,9 @@ st.markdown(r"""
         border: 1px solid #00ADB5 !important; color: #00ADB5 !important; background-color: #161B22 !important; 
         width: 100%; border-radius: 2px; font-weight: bold; text-transform: uppercase;
     }
+    .stTabs [data-baseweb="tab-list"] { background-color: #000000 !important; }
+    .stTabs [data-baseweb="tab"] { color: #888888 !important; }
+    .stTabs [data-baseweb="tab"][aria-selected="true"] { color: #00ADB5 !important; border-bottom-color: #00ADB5 !important; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -56,10 +59,6 @@ class SpacetimeSolver:
                 return db_dr - (b / r) + (sign * params[0] * r**params[1] * params[2])
             elif "Vaidya" in metric_type:
                 return db_dr - (b / r) * (1 - params[0] * params[1] * params[2])
-            elif "Stringy" in metric_type:
-                return db_dr - (b / (r - params[0] * params[1] * params[2]))
-            elif "Bonnor-Melvin" in metric_type:
-                return db_dr - (params[0]**2 * r)
             return db_dr - (b / r)
 
         bc_val = r0 if "Warp" not in metric_type else 1.0
@@ -72,22 +71,20 @@ class SpacetimeSolver:
         return model, loss
 
     @staticmethod
-    def extract_telemetry(model, metric_type, r0, r_max):
+    def extract_telemetry(model, metric_type, r0, r_max, p_energy):
         r_v = np.linspace(r0, r_max, 600).reshape(-1, 1)
         b = model.net(torch.tensor(r_v, dtype=torch.float32)).detach().numpy()
         rho = np.gradient(b.flatten(), r_v.flatten()) / (8 * np.pi * r_v.flatten()**2 + 1e-12)
-        
-        # Mapping A: Geometry
+        # Spatial Embedding
         z = np.zeros_like(r_v)
         dr = r_v[1] - r_v[0]
         for i in range(1, len(r_v)):
             val = (r_v[i] / (b[i] + 1e-9)) - 1 if "Warp" not in metric_type else 0.1
             z[i] = z[i-1] + (1.0 / np.sqrt(np.abs(val)) if np.abs(val) > 1e-9 else 10.0) * dr
-            
-        # Mapping B: Potential (Full Manifold g_tt)
+        # Gravitational Potential & Particle Gamma
         pot = -np.log(np.abs(1 - b.flatten()/r_v.flatten()) + 1e-6)
-        
-        return r_v, b, rho, z, pot
+        p_gamma = p_energy / (np.sqrt(np.abs(1 - b.flatten()/r_v.flatten())) + 1e-6)
+        return r_v, b, rho, z, pot, p_gamma
 
 # --- 3. THE UNIVERSAL SIDEBAR ---
 st.sidebar.markdown("### 🛠️ MANIFOLD & CONSTANTS")
@@ -96,14 +93,12 @@ metric_list = [
     "Reissner-Nordström (Charged)", "Schwarzschild-de Sitter (Expansion)", 
     "Schwarzschild-AdS (Contraction)", "GHS Stringy Black Hole", 
     "Vaidya (Radiating Star)", "Kerr-Newman (Charge + Rotation)", 
-    "Einstein-Rosen Bridge", "JNW (Naked Singularity)", "Ellis Drainhole",
-    "Bonnor-Melvin (Magnetic Universe)", "Gott Cosmic String"
+    "Einstein-Rosen Bridge", "JNW (Naked Singularity)", "Ellis Drainhole"
 ]
 metric_type = st.sidebar.selectbox("Metric Class", metric_list)
-
 r0 = st.sidebar.number_input(r"Base Scale ($r_0$ / $M$)", 0.1, 1000.0, 5.0, format="%.4f")
 
-# --- ALL-VARIABLES PARAMETER CIRCUIT ---
+# Dynamic Logic
 params = []
 if metric_type == "Morris-Thorne Wormhole":
     params = [st.sidebar.slider("Curvature (κ)", 0.1, 1.0, 0.5), st.sidebar.slider("Redshift (Φ)", 0.0, 1.0, 0.0), st.sidebar.slider("Exoticity (ξ)", 0.0, 2.0, 1.0)]
@@ -113,20 +108,18 @@ elif "Warp" in metric_type:
     params = [st.sidebar.slider("Velocity (v/c)", 0.1, 10.0, 1.0), st.sidebar.slider("Sigma (σ)", 0.1, 5.0, 1.0), st.sidebar.slider("Thickness (w)", 1, 10, 2), st.sidebar.slider("Modulation", 0.1, 2.0, 1.0)]
 elif "Sitter" in metric_type or "AdS" in metric_type:
     params = [st.sidebar.number_input("Lambda (Λ)", 0.0, 0.01, 0.0001, format="%.6f"), st.sidebar.slider("Curvature (k)", 1, 3, 2), st.sidebar.slider("Omega (Ω)", 0.1, 1.0, 1.0)]
-elif "Vaidya" in metric_type:
-    params = [st.sidebar.slider("Mass Loss (Ṁ)", 0.0, 1.0, 0.1), st.sidebar.slider("Luminosity (L)", 0.1, 10.0, 1.0), st.sidebar.slider("Radial Flux (q)", 0.1, 5.0, 1.0)]
-elif "Bonnor" in metric_type:
-    params = [st.sidebar.slider("Magnetic Field Strength", 0.1, 10.0, 1.0)]
 else:
     params = [st.sidebar.slider("Coupling / Strength", 0.1, 5.0, 1.0)]
 
+st.sidebar.markdown("### ☄️ KINEMATICS")
+p_energy = st.sidebar.number_input("Infall Energy (ε)", 0.0001, 100.0, 1.0, format="%.4f")
 lr_val = st.sidebar.number_input("Learning Rate", 0.0001, 0.01, 0.001, format="%.4f")
 epochs = st.sidebar.select_slider("Epochs", options=[1000, 2500, 5000], value=2500)
 pause = st.sidebar.toggle("HALT SIMULATION", value=False)
 
 # EXECUTION
 model, hist = SpacetimeSolver.solve_manifold(metric_type, r0, r0 * 10, params, epochs, lr_val)
-r, b, rho, z, pot = SpacetimeSolver.extract_telemetry(model, metric_type, r0, r0 * 10)
+r, b, rho, z, pot, p_gamma = SpacetimeSolver.extract_telemetry(model, metric_type, r0, r0 * 10, p_energy)
 
 # DASHBOARD STRIP
 m1, m2, m3 = st.columns(3)
@@ -143,52 +136,52 @@ with v_col:
     Z_geom = np.tile(z.flatten(), (60, 1))
     Z_pot = np.tile(pot.flatten(), (60, 1))
     
-    # --- GRAPH 1: FULL GEOMETRIC MANIFOLD ---
-    st.subheader("Manifold A: Full Geometric Embedding ($ds^2$ Space)")
-    fig1 = go.Figure(data=[
-        go.Surface(x=R*np.cos(T), y=R*np.sin(T), z=Z_geom, colorscale='Viridis', showscale=False),
-        go.Surface(x=R*np.cos(T), y=R*np.sin(T), z=-Z_geom, colorscale='Viridis', showscale=False, opacity=0.8)
-    ])
+    st.subheader("Manifold A: Full Geometric Embedding")
+    fig1 = go.Figure(data=[go.Surface(x=R*np.cos(T), y=R*np.sin(T), z=Z_geom, colorscale='Viridis', showscale=False),
+                           go.Surface(x=R*np.cos(T), y=R*np.sin(T), z=-Z_geom, colorscale='Viridis', showscale=False, opacity=0.8)])
     fig1.update_layout(template="plotly_dark", scene=dict(xaxis_visible=False, yaxis_visible=False, zaxis_visible=False), paper_bgcolor='black', margin=dict(l=0,r=0,b=0,t=0), height=400)
     st.plotly_chart(fig1, use_container_width=True)
 
-    # --- GRAPH 2: FULL POTENTIAL MANIFOLD ---
-    st.subheader("Manifold B: Full Metric Potential ($g_{tt}$ Field)")
-    fig2 = go.Figure(data=[
-        go.Surface(x=R*np.cos(T), y=R*np.sin(T), z=Z_pot, colorscale='Magma', showscale=False),
-        go.Surface(x=R*np.cos(T), y=R*np.sin(T), z=-Z_pot, colorscale='Magma', showscale=False, opacity=0.8)
-    ])
+    st.subheader("Manifold B: Full Potential Horizon ($g_{tt}$)")
+    fig2 = go.Figure(data=[go.Surface(x=R*np.cos(T), y=R*np.sin(T), z=Z_pot, colorscale='Magma', showscale=False),
+                           go.Surface(x=R*np.cos(T), y=R*np.sin(T), z=-Z_pot, colorscale='Magma', showscale=False, opacity=0.8)])
     fig2.update_layout(template="plotly_dark", scene=dict(xaxis_visible=False, yaxis_visible=False, zaxis_visible=False), paper_bgcolor='black', margin=dict(l=0,r=0,b=0,t=0), height=400)
     st.plotly_chart(fig2, use_container_width=True)
 
 with d_col:
-    fig_stack, (ax1, ax2) = plt.subplots(2, 1, facecolor='black', figsize=(6, 9))
-    ax1.set_facecolor('black'); ax1.plot(r, rho, color='#FF2E63', lw=2)
-    ax1.set_title("Energy Density Distribution", color='white', fontsize=10)
-    ax1.tick_params(colors='white', labelsize=8); ax1.grid(alpha=0.1)
+    # ANALYTICAL TABS
+    tabs = st.tabs(["📊 STRESS-ENERGY", "📈 FIELD TENSORS", "☄️ GEODESICS"])
     
-    ax2.set_facecolor('black'); ax2.plot(r, b, color='#00ADB5', lw=2)
-    ax2.set_title("Metric Shape Function b(r)", color='white', fontsize=10)
-    ax2.tick_params(colors='white', labelsize=8); ax2.grid(alpha=0.1)
-    
-    plt.tight_layout()
-    st.pyplot(fig_stack)
-    
-    st.download_button("📥 EXPORT TELEMETRY (CSV)", data=pd.DataFrame({"r":r.flatten(),"b":b.flatten(),"density":rho.flatten()}).to_csv().encode('utf-8'), file_name="telemetry.csv", use_container_width=True)
-    
-    # Final Visuals
-    if "Wormhole" in metric_type:
+    with tabs[0]:
+        st.subheader("Matter Distributions")
         
-        pass
-    elif "Kerr" in metric_type:
+        fig_r, ax_r = plt.subplots(facecolor='black')
+        ax_r.set_facecolor('black'); ax_r.plot(r, rho, color='#FF2E63', lw=2)
+        ax_r.tick_params(colors='white'); ax_r.grid(alpha=0.1)
+        st.pyplot(fig_r)
         
-        pass
-    elif "Charged" in metric_type:
-        
-        pass
-    else:
-        
-        pass
+        if "Wormhole" in metric_type: ; pass
+        elif "Kerr" in metric_type: ; pass
+        elif "Charged" in metric_type: ; pass
+        elif "Expansion" in metric_type: ; pass
+        else: pass
+
+    with tabs[1]:
+        st.subheader("Metric Shape Function b(r)")
+        fig_b, ax_b = plt.subplots(facecolor='black')
+        ax_b.set_facecolor('black'); ax_b.plot(r, b, color='#00ADB5', lw=2)
+        ax_b.tick_params(colors='white'); ax_b.grid(alpha=0.1)
+        st.pyplot(fig_b)
+
+    with tabs[2]:
+        st.subheader("Particle Energy Factor ($\gamma$)")
+        fig_p, ax_p = plt.subplots(facecolor='black')
+        ax_p.set_facecolor('black'); ax_p.plot(r, p_gamma, color='#00FF41', lw=2)
+        ax_p.set_yscale('log'); ax_p.tick_params(colors='white'); ax_p.grid(alpha=0.1)
+        st.pyplot(fig_p)
+        st.caption("Lorentz factor explosion indicates approach to a physical or coordinate singularity.")
+
+    st.download_button("📥 EXPORT TELEMETRY (CSV)", data=pd.DataFrame({"r":r.flatten(),"b":b.flatten(),"rho":rho.flatten()}).to_csv().encode('utf-8'), file_name="telemetry.csv", use_container_width=True)
 
 if not pause:
     time.sleep(0.01)
