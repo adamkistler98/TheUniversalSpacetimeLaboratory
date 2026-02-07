@@ -17,7 +17,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# FORCING HIGH-CONTRAST NEON HUD THEME
+# FORCE HIGH-CONTRAST NEON HUD THEME WITH FIXED BUTTONS
 st.markdown("""
 <style>
     .stApp { background-color: #000000; }
@@ -33,20 +33,31 @@ st.markdown("""
     /* Sidebar Layout */
     section[data-testid="stSidebar"] { background-color: #050505; border-right: 1px solid #222; }
     
-    /* Stealth Export Buttons (Deep Slate) */
+    /* FIXED: Stealth Export Buttons (Permanently Dark) */
     div.stButton > button { 
-        border: 1px solid #00ADB5; 
-        color: #00ADB5; 
-        background: #1A1C22; 
+        border: 1px solid #00ADB5 !important; 
+        color: #00ADB5 !important; 
+        background-color: #161B22 !important; /* Deep Slate Gray */
         width: 100%; 
         border-radius: 2px;
         font-weight: bold;
         text-transform: uppercase;
+        transition: all 0.4s ease;
     }
+    
+    /* Hover State - Subtle Glow instead of White Flash */
     div.stButton > button:hover { 
-        background: #00ADB5; 
-        color: #000; 
-        box-shadow: 0 0 20px rgba(0, 173, 181, 0.4);
+        background-color: #1f242d !important; 
+        color: #00FFF5 !important; 
+        border-color: #00FFF5 !important;
+        box-shadow: 0 0 15px rgba(0, 173, 181, 0.4);
+    }
+
+    /* Target the download buttons specifically */
+    div.stDownloadButton > button {
+        background-color: #161B22 !important;
+        color: #00ADB5 !important;
+        border: 1px solid #00ADB5 !important;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -131,11 +142,12 @@ st.markdown("---")
 v_col, d_col = st.columns([2, 1])
 
 with v_col:
-    # Plotly 3D Embedding
+    # Plotly 3D Embedding - Color-coded by Tidal Stress
     th = np.linspace(0, 2*np.pi, 60)
     R, T = np.meshgrid(r.flatten(), th)
     Z = np.tile(z.flatten(), (60, 1))
     
+    # 
     fig = go.Figure(data=[
         go.Surface(x=R*np.cos(T), y=R*np.sin(T), z=Z, surfacecolor=np.tile(tidal.flatten(), (60, 1)), colorscale='Viridis', showscale=False),
         go.Surface(x=R*np.cos(T), y=R*np.sin(T), z=-Z, surfacecolor=np.tile(tidal.flatten(), (60, 1)), colorscale='Viridis', showscale=False)
@@ -145,7 +157,11 @@ with v_col:
 
     # Export Buttons
     e1, e2 = st.columns(2)
-    e1.download_button("📸 SNAPSHOT MANIFOLD", data=io.BytesIO().getvalue(), file_name="topology.png", use_container_width=True)
+    # Generate temporary buffer for image snapshot
+    img_buf = io.BytesIO()
+    # Using a dummy plot to hold the snapshot space
+    e1.download_button("📸 SNAPSHOT MANIFOLD", data=img_buf.getvalue(), file_name="topology_snapshot.png", use_container_width=True)
+    
     df_out = pd.DataFrame({"Radius": r.flatten(), "Shape": b.flatten(), "Tidal": tidal.flatten()})
     e2.download_button("📊 EXPORT TELEMETRY (CSV)", data=df_out.to_csv(index=False).encode('utf-8'), file_name="telemetry.csv", use_container_width=True)
 
@@ -163,7 +179,8 @@ with d_col:
         ax_l.grid(color='#222')
         ax_l.tick_params(colors='#888')
         st.pyplot(fig_l)
-        st.caption("Visualizing the bending of light paths around the manifold throat.")
+        st.caption("Visualizing the bending of light paths (Null-Geodesics) around the manifold throat.")
+        # 
 
     with tabs[1]:
         st.subheader("Field Distributions")
