@@ -9,39 +9,47 @@ import plotly.graph_objects as go
 import io
 import time
 
-# --- 1. UI CONFIGURATION & STEALTH CSS ---
+# --- 1. UI CONFIGURATION & ABSOLUTE STEALTH CSS ---
 st.set_page_config(page_title="Lorentzian Metric Solver", layout="wide", page_icon="🌌")
 
 st.markdown(r"""
 <style>
-    /* Main Background - True Void */
-    .stApp { background-color: #000000; }
+    /* 1. Main Background - True Void */
+    .stApp { background-color: #000000 !important; }
     
-    /* Headers & Text - Research HUD Cyan */
+    /* 2. Headers & Text - Research HUD Cyan */
     h1, h2, h3, h4 { color: #00ADB5 !important; font-family: 'Consolas', monospace; }
     p, li, label, .stMarkdown, .stCaption { color: #FFFFFF !important; font-size: 15px; }
     
-    /* FIX: Targeted Stealth for Selectbox, Input, and Number boxes */
-    div[data-baseweb="select"], div[data-baseweb="input"], input, select {
+    /* 3. HARD OVERRIDE: Stealth for all Input Components */
+    /* This targets the container, the input, and the dropdown menu */
+    div[data-baseweb="select"], div[data-baseweb="input"], input, select, .stSelectbox, .stNumberInput {
         background-color: #161B22 !important; 
         color: #00FFF5 !important; 
-        border: 1px solid #00ADB5 !important;
     }
-    
-    /* Ensuring the dropdown menu itself is dark */
-    ul[role="listbox"] {
+
+    /* Targeted override for the inner div that Streamlit often keeps white */
+    div[data-baseweb="select"] > div, div[data-baseweb="input"] > div {
         background-color: #161B22 !important;
         color: #00FFF5 !important;
+        border: 1px solid #00ADB5 !important;
     }
-    
-    /* Metrics - Neon Green */
+
+    /* Ensuring the dropdown list (popover) is also dark */
+    div[data-baseweb="popover"], ul[role="listbox"], li[role="option"] {
+        background-color: #161B22 !important;
+        color: #00FFF5 !important;
+        border: 1px solid #00ADB5 !important;
+    }
+
+    /* 4. Metrics - Neon Green */
     div[data-testid="stMetricValue"] { color: #00FF41 !important; font-family: 'Consolas', monospace; text-shadow: 0 0 10px rgba(0,255,65,0.4); }
     div[data-testid="stMetricLabel"] { color: #AAAAAA !important; text-transform: uppercase; letter-spacing: 1px; }
     
-    /* Sidebar */
-    section[data-testid="stSidebar"] { background-color: #050505; border-right: 1px solid #222; }
+    /* 5. Sidebar */
+    section[data-testid="stSidebar"] { background-color: #050505 !important; border-right: 1px solid #222; }
     
-    /* Stealth Buttons */
+    /* 6. Stealth Buttons */
     div.stButton > button, div.stDownloadButton > button { 
         border: 1px solid #00ADB5 !important; 
         color: #00ADB5 !important; 
@@ -52,11 +60,16 @@ st.markdown(r"""
         text-transform: uppercase;
         transition: all 0.4s ease;
     }
-    div.stButton > button:hover, div.stDownloadButton > button:hover { 
+    div.stButton > button:hover { 
         background-color: #1f242d !important; 
         color: #00FFF5 !important; 
         box-shadow: 0 0 15px rgba(0, 173, 181, 0.4);
     }
+
+    /* 7. Tab Styling */
+    .stTabs [data-baseweb="tab-list"] { background-color: #000000 !important; }
+    .stTabs [data-baseweb="tab"] { color: #888888 !important; }
+    .stTabs [data-baseweb="tab"][aria-selected="true"] { color: #00ADB5 !important; border-bottom-color: #00ADB5 !important; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -159,12 +172,12 @@ with d_col:
     tabs = st.tabs(["📊 STRESS-ENERGY", "📈 TENSOR PROFILES"])
     with tabs[0]:
         st.subheader("Energy Density Profile")
+        
         fig, ax = plt.subplots(facecolor='black')
         ax.set_facecolor('black')
         ax.plot(r, rho, color='#FF2E63', lw=2)
         ax.tick_params(colors='white'); ax.grid(alpha=0.1)
         st.pyplot(fig)
-        
 
     with tabs[1]:
         st.subheader("Metric Shape $b(r)$")
