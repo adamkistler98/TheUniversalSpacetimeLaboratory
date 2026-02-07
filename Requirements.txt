@@ -1,0 +1,7 @@
+torch
+deepxde
+streamlit
+numpy
+matplotlib
+pandas
+scipy
