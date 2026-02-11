@@ -74,5 +74,3 @@ This project abandons standard numerical integration for a Deep Learning approac
 **[Adam Kistler]**
 
 
----
-*"Matter tells Space how to curve; Space tells Matter how to move." — John Archibald Wheeler*
