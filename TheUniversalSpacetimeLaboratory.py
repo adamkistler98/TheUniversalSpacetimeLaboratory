@@ -1,3 +1,8 @@
+import os
+# --- CRITICAL FIX: FORCE DEEPXDE BACKEND TO PYTORCH ---
+# This must run before deepxde is imported to prevent the "No backend selected" hang.
+os.environ["DDE_BACKEND"] = "pytorch"
+
 import streamlit as st
 import numpy as np
 import matplotlib.pyplot as plt
@@ -92,7 +97,7 @@ st.markdown("""
     .stTabs [data-baseweb="tab"][aria-selected="true"] { color: #00ff41 !important; border-bottom-color: #00ff41 !important; }
     
     /* PLOTS */
-    canvas { filter: invert(0); } /* Ensure charts don't get inverted if using dark reader extensions */
+    canvas { filter: invert(0); }
 </style>
 """, unsafe_allow_html=True)
 
@@ -107,45 +112,67 @@ class SpacetimeSolver:
         
         # --- THE EINSTEIN FIELD EQUATION RESIDUALS ---
         def pde(r, b):
-            db_dr = dde.grad.jacobian(b, r)
-            
             # 1. Wormholes & Topology
             if metric_type == "Morris-Thorne Wormhole":
+                db_dr = dde.grad.jacobian(b, r)
                 return db_dr - (b / r) * params[0] + (params[1] * (params[2] - b/r))
+            
             elif metric_type == "Einstein-Rosen Bridge":
+                db_dr = dde.grad.jacobian(b, r)
                 return db_dr - (b / r)
+                
             elif metric_type == "Ellis Drainhole":
+                db_dr = dde.grad.jacobian(b, r)
                 return db_dr - (b / (r**2 + params[0]**2)) * (params[1] * params[2])
 
             # 2. Black Hole Dynamics
             elif metric_type == "Kerr Black Hole":
+                db_dr = dde.grad.jacobian(b, r)
                 return db_dr - (2 * params[0] * r / (r**2 + params[2]**2)) * b
+                
             elif metric_type == "Reissner-Nordström (Charged)":
+                db_dr = dde.grad.jacobian(b, r)
                 return db_dr - (b / r) + (params[1]**2 / r**2)
+                
             elif metric_type == "Kerr-Newman (Charge + Rotation)":
+                db_dr = dde.grad.jacobian(b, r)
                 eff_q = np.sqrt(params[1]**2 + params[3]**2)
                 return db_dr - (2 * params[0] * r / (r**2 + params[2]**2)) * b + (eff_q**2 / r**2)
+                
             elif metric_type == "Gott Cosmic String":
+                 db_dr = dde.grad.jacobian(b, r)
                  return db_dr - (params[0] * b)
 
             # 3. Cosmology & Warp
             elif metric_type == "Alcubierre Warp Drive":
+                db_dr = dde.grad.jacobian(b, r)
                 return db_dr + (params[0] * b * (1-b)**params[2]) / (params[1] * params[3] + 1e-6)
+                
             elif "Expansion" in metric_type or "Contraction" in metric_type:
+                db_dr = dde.grad.jacobian(b, r)
                 sign = -1 if "Expansion" in metric_type else 1
                 return db_dr - (b / r) + (sign * params[0] * r**params[1] * params[2])
             
             # 4. Exotic Frontiers
             elif metric_type == "Vaidya (Radiating Star)":
+                db_dr = dde.grad.jacobian(b, r)
                 return db_dr - (b / r) * (1 - params[0] * params[1] * params[2])
+                
             elif "Stringy" in metric_type:
+                db_dr = dde.grad.jacobian(b, r)
                 return db_dr - (b / (r - params[0] * params[1] * params[2]))
+                
             elif "Naked" in metric_type:
+                db_dr = dde.grad.jacobian(b, r)
                 return db_dr - (b / (r * params[0]**(params[1]*params[2])))
+                
             elif "Bonnor-Melvin" in metric_type:
+                db_dr = dde.grad.jacobian(b, r)
                 return db_dr - (params[0]**2 * r)
 
-            return db_dr - (b / r) # Default Fallback
+            # Default Fallback
+            db_dr = dde.grad.jacobian(b, r)
+            return db_dr - (b / r)
 
         bc_val = r0 if "Warp" not in metric_type else 1.0
         bc = dde.icbc.DirichletBC(geom, lambda x: bc_val, lambda x, on: on and np.isclose(x[0], r0))
@@ -282,7 +309,6 @@ lr_val = st.sidebar.number_input("Learning Rate (η)", 0.0001, 0.01, 0.001, form
 epochs = st.sidebar.select_slider("Training Epochs", options=[1000, 2500, 5000], value=2500)
 
 # --- EXECUTION PHASE ---
-# Removed infinite rerun loop for performance optimization
 with st.spinner("CALCULATING SPACETIME GEOMETRY..."):
     model, hist = SpacetimeSolver.solve_manifold(metric_type, r0, r0 * 10, params, epochs, lr_val)
     r, b, rho, z, pot, p_gamma = SpacetimeSolver.extract_telemetry(model, metric_type, r0, r0 * 10, p_energy)
@@ -308,7 +334,6 @@ with v_col:
     
     st.subheader("Manifold Zenith: Geometric Embedding ($ds^2$)")
     fig1 = go.Figure(data=[
-        # Changed colorscale to 'Electric' for cyber feel
         go.Surface(x=R*np.cos(T), y=R*np.sin(T), z=Z_geom, colorscale='Electric', showscale=False, name='Upper'),
         go.Surface(x=R*np.cos(T), y=R*np.sin(T), z=-Z_geom, colorscale='Electric', showscale=False, opacity=0.9, name='Lower')
     ])
@@ -327,7 +352,6 @@ with d_col:
     # TRI-TAB ANALYTICAL SUITE
     tabs = st.tabs(["📊 STRESS-ENERGY", "📈 TENSOR FIELD", "☄️ GEODESICS"])
     
-    # Common plotting style helper
     def style_plot(ax, color='#00ff41'):
         ax.set_facecolor('black')
         ax.tick_params(colors='white')
@@ -342,7 +366,6 @@ with d_col:
     with tabs[0]:
         st.subheader("Energy Density Profile ($\rho$)")
         fig_r, ax_r = plt.subplots(facecolor='black', figsize=(5,4))
-        # Updated to Green
         ax_r.plot(r, rho, color='#00ff41', lw=2)
         style_plot(ax_r)
         st.pyplot(fig_r)
@@ -350,15 +373,14 @@ with d_col:
     with tabs[1]:
         st.subheader("Shape Function $b(r)$")
         fig_b, ax_b = plt.subplots(facecolor='black', figsize=(5,4))
-        # Updated to Green/White dashed
         ax_b.plot(r, b, color='#00ff41', lw=2, linestyle='--')
         style_plot(ax_b)
         st.pyplot(fig_b)
 
     with tabs[2]:
-        st.subheader("Lorentz Factor ($\gamma$)")
+        # FIXED SYNTAX WARNING WITH RAW STRING r""
+        st.subheader(r"Lorentz Factor ($\gamma$)")
         fig_p, ax_p = plt.subplots(facecolor='black', figsize=(5,4))
-        # Updated to White for contrast
         ax_p.plot(r, p_gamma, color='white', lw=1.5)
         ax_p.set_yscale('log')
         style_plot(ax_p)
